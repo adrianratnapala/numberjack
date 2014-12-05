@@ -6,14 +6,38 @@ import (
 	"net/http"
 )
 
-var noble_tecumseh = `<svg  width="200" height="200" xmlns="http://www.w3.org/2000/svg">
-	<rect
-		width="150" height="150"
-		style="fill:blue;stroke:pink;stroke-width:5;fill-opacity:0.1;stroke-opacity:0.9"
-	/>
+/*
+var noble_tecumseh = `<svg  width="1000" height="1000" xmlns="http://www.w3.org/2000/svg">
+	<path d="M150 0 L75 200 L225 200 Z" />
 </svg>
 `
+*/
 
+type vertex struct
+{
+	x,y float64
+}
+
+type Path struct {
+	vertices []vertex
+}
+
+// Write pa to w as the inside of an SVG path string (not including quotes).
+func writePathData(w io.Writer, pa *Path)  {
+	vertices := pa.vertices
+	if len(vertices) < 1 {
+		return
+	}
+
+	pt := vertices[0]
+	fmt.Fprintf(w, "M%g %g", pt.x, pt.y)
+
+	for _, pt := range vertices[1:] {
+		fmt.Fprintf(w, " L%g %g", pt.x, pt.y)
+	}
+
+	io.WriteString(w, " Z")
+}
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	pfad := r.URL.Path[1:]
@@ -26,7 +50,19 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 func svgHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "image/svg+xml")
-	io.WriteString(w, noble_tecumseh)
+	var corner = Path {
+		vertices : []vertex {
+			{10, 10},
+			{10, 90},
+			{90, 10},
+		},
+	}
+
+	io.WriteString(w, `<svg  width="1000" height="1000" xmlns="http://www.w3.org/2000/svg">` + "\n")
+	io.WriteString(w, `	<path d="`)
+	writePathData(w, &corner)
+	io.WriteString(w, `"/>` + "\n")
+	io.WriteString(w, `</svg>` + "\n")
 }
 
 func main() {
