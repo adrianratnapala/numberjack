@@ -6,12 +6,13 @@ import (
 	"net/http"
 )
 
-/*
-var noble_tecumseh = `<svg  width="1000" height="1000" xmlns="http://www.w3.org/2000/svg">
-	<path d="M150 0 L75 200 L225 200 Z" />
-</svg>
+var savage_style =
 `
-*/
+path {
+	stroke: #000000;
+	fill-opacity: 0.05;
+}
+`
 
 type vertex struct
 {
@@ -59,7 +60,10 @@ func svgHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	io.WriteString(w, `<svg  width="1000" height="1000" xmlns="http://www.w3.org/2000/svg">` + "\n")
-	io.WriteString(w, `	<path d="`)
+	io.WriteString(w, `	<style tep="text/css"> <![CDATA[`)
+        io.WriteString(w, savage_style)
+	io.WriteString(w, `	]]> </style>` + "\n")
+        io.WriteString(w, `     <path d="`)
 	writePathData(w, &corner)
 	io.WriteString(w, `"/>` + "\n")
 	io.WriteString(w, `</svg>` + "\n")
