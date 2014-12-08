@@ -4,6 +4,8 @@ import (
 	"io"
 	"fmt"
 	"net/http"
+	"os"
+	"log"
 )
 
 var savage_style =
@@ -22,6 +24,56 @@ type vertex struct
 type Path struct {
 	vertices []vertex
 }
+
+type svgWriter struct {
+	open_tags []string
+	w io.Writer
+}
+
+func (s *svgWriter) push(tag string) error {
+	s.open_tags = append(s.open_tags, tag)
+	_, err := fmt.Fprintf(s.w, "<%s>", tag)
+	return err
+}
+
+func (s *svgWriter) pop() error {
+	tags := s.open_tags
+
+	n := len(tags) - 1
+	if n < 0  {
+		panic(fmt.Errorf("%v: too many pop()s"))
+	}
+
+	if _, err := fmt.Fprintf(s.w, "</%s>", tags[n]); err != nil {
+		return err
+	}
+
+	s.open_tags = tags[:n]
+
+	return nil
+}
+
+func (s *svgWriter) End() error {
+	tags := s.open_tags
+	//log.Printf("End: tags = %v", tags)
+
+	switch n := len(tags); {
+	case n <= 0: return nil
+	case n > 1: panic(fmt.Errorf(
+		"%v: unexpected End(), while %s is open.",
+		s, tags[n-1]))
+	}
+
+	return s.pop();
+}
+
+
+func newSvgWriter(w io.Writer) (*svgWriter, error) {
+	s := &svgWriter { w :w }
+	s.push("svg")
+	return s, nil
+}
+
 
 // Write pa to w as the inside of an SVG path string (not including quotes).
 func writePathData(w io.Writer, pa *Path)  {
@@ -70,6 +122,14 @@ func svgHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	{
+		sw, err := newSvgWriter(os.Stdout)
+		if err != nil {
+			log.Fatal(err)
+		}
+		sw.End()
+	}
+
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/savage/", svgHandler)
 	http.ListenAndServe(":8080", nil)
