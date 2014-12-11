@@ -16,6 +16,10 @@ path {
 }
 `
 
+type Thing interface {
+	AsPath()(*Path, bool)
+}
+
 type vertex struct
 {
 	x,y float64
@@ -23,6 +27,11 @@ type vertex struct
 
 type Path struct {
 	vertices []vertex
+}
+
+// FIX: why not just use golang type assertions?
+func (p *Path) AsPath()(*Path, bool) {
+	return p, p != nil
 }
 
 type xmlWriter struct {
@@ -180,6 +189,20 @@ func writeSavage(w io.Writer) {
 	}
 
 	x := &xmlWriter{w : w}
+	savageDoc(x, func(){savageThing(x, &corner)})
+}
+
+func savageThing(x *xmlWriter, t Thing){
+	if path, ok := t.AsPath(); ok {
+		x.element("path", func() {
+			x.wsFmt(`d="`)
+			writePathData(x.w, path)
+			x.fmt(`"`)
+		})
+	}
+}
+
+func savageDoc(x *xmlWriter, gen func()) {
 	x.element("svg", func() {
 		x.attr("xmlns", "http://www.w3.org/2000/svg")
 		x.newLine()
@@ -194,13 +217,11 @@ func writeSavage(w io.Writer) {
 			})
 		})
 
-		x.element("path", func() {
-			x.wsFmt(`d="`)
-			writePathData(w, &corner)
-			x.fmt(`"`)
-		})
+		gen()
 	})
 }
+
+
 
 func svgHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "image/svg+xml")
