@@ -170,8 +170,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "</html>\n")
 }
 
-func svgHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "image/svg+xml")
+func writeSavage(w io.Writer) {
 	var corner = Path {
 		vertices : []vertex {
 			{10, 10},
@@ -180,14 +179,32 @@ func svgHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	io.WriteString(w, `<svg  width="1000" height="1000" xmlns="http://www.w3.org/2000/svg">` + "\n")
-	io.WriteString(w, `	<style tep="text/css"> <![CDATA[`)
-        io.WriteString(w, savage_style)
-	io.WriteString(w, `	]]> </style>` + "\n")
-        io.WriteString(w, `     <path d="`)
-	writePathData(w, &corner)
-	io.WriteString(w, `"/>` + "\n")
-	io.WriteString(w, `</svg>` + "\n")
+	x := &xmlWriter{w : w}
+	x.element("svg", func() {
+		x.attr("xmlns", "http://www.w3.org/2000/svg")
+		x.newLine()
+		x.attr("width", 1000)
+		x.attr("height", 1000)
+		x.tagEnd();
+
+		x.element("style", func() {
+			x.attr("type", "text/css")
+			x.cdata(true, func (w io.Writer) {
+				io.WriteString(w, savage_style)
+			})
+		})
+
+		x.element("path", func() {
+			x.wsFmt(`d="`)
+			writePathData(w, &corner)
+			x.fmt(`"`)
+		})
+	})
+}
+
+func svgHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "image/svg+xml")
+	writeSavage(w)
 }
 
 func main() {
@@ -197,30 +214,8 @@ func main() {
 			log.Fatal(r)
 		}
 	}()
+	writeSavage(os.Stdout)
 
-	x := &xmlWriter{w : os.Stdout}
-	x.element("die", func() {
-		x.attr("xmlns", "http://www.w3.org/2000/svg")
-		x.newLine()
-		x.attr("width", 1000)
-		x.attr("height", 1000)
-		x.tagEnd()
-
-		x.element("quck", func() {
-			x.attr("id", 14)
-			x.cdata(false, func(w io.Writer){
-				io.WriteString(w, "Cats and hogs")
-			})
-		})
-
-		x.element("longer", func() {
-			x.newLine()
-			x.attr("id", "tweedle-dee-is-dum")
-		})
-	})
-}
-
-func Main() {
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/savage/", svgHandler)
 	http.ListenAndServe(":8080", nil)
