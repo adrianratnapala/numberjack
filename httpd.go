@@ -95,25 +95,27 @@ func (x* xmlWriter) pop() string {
 }
 
 // Ends the current tag with `>`, unless pop, then end it with `/>`.
-func (x* xmlWriter) _tagEnd(txt string)  {
+func (x* xmlWriter) _tagEnd(txt string, noNl bool)  {
 	if x.longAttr {
 		x.newLine()
 	}
 
 	x.tagOpen = false
 	x.iFmt(txt)
-	x.newLine()
+	if !noNl {
+		x.newLine()
+        }
 }
 
 // Ends the current tag with `>`.
 func (x* xmlWriter) tagEnd() {
-	x._tagEnd(">")
+	x._tagEnd(">", false)
 }
 
 // Closes the currently element with an end tag or `/>`.
 func (x* xmlWriter) tagPop() {
 	if x.tagOpen {
-		x._tagEnd("/>")
+		x._tagEnd("/>", false)
 		x.pop()
 		return
 	}
@@ -126,6 +128,20 @@ func (x* xmlWriter) element(tag string, gen func()) {
 	x.tagStart(tag)
 	gen()
 	x.tagPop()
+}
+
+// Like tagEnd, except we expect cdata for a body. `gen()` writes the desired
+// bytes to it `w`.  If `hard`, then this is a true CDATA element, otherwise
+// the text go straight to the output stream
+func (x* xmlWriter) cdata(hard bool, gen func(w io.Writer)) {
+	x._tagEnd(">", true)
+	if hard {
+		x.fmt("<![CDATA[")
+		gen(x.w)
+		x.fmt("]]>")
+	} else {
+		gen(x.w)
+	}
 }
 
 // Write pa to w as the inside of an SVG path string (not including quotes).
@@ -192,6 +208,9 @@ func main() {
 
 		x.element("quck", func() {
 			x.attr("id", 14)
+			x.cdata(false, func(w io.Writer){
+				io.WriteString(w, "Cats and hogs")
+			})
 		})
 
 		x.element("longer", func() {
