@@ -121,6 +121,12 @@ func (x* xmlWriter) tagPop() {
 	x.newLine()
 }
 
+// Emit an entire <tag ../> element, `gen()` generates the attributes and body.
+func (x* xmlWriter) element(tag string, gen func()) {
+	x.tagStart(tag)
+	gen()
+	x.tagPop()
+}
 
 // Write pa to w as the inside of an SVG path string (not including quotes).
 func writePathData(w io.Writer, pa *Path)  {
@@ -177,24 +183,22 @@ func main() {
 	}()
 
 	x := &xmlWriter{w : os.Stdout}
-	// <die ...>
-	x.tagStart("die")
-	x.attr("xmlns", "http://www.w3.org/2000/svg")
-	x.newLine()
-	x.attr("width", 1000)
-	x.attr("height", 1000)
-	x.tagEnd()
-	// <quck .../>
-	x.tagStart("quck")
-	x.attr("id", 14)
-	x.tagPop()
-	// <longer ...></longer>
-	x.tagStart("longer")
-	x.newLine()
-	x.attr("id", "tweedle-dee-is-dum")
-	x.tagPop()
-	// </die>
-	x.tagPop()
+	x.element("die", func() {
+		x.attr("xmlns", "http://www.w3.org/2000/svg")
+		x.newLine()
+		x.attr("width", 1000)
+		x.attr("height", 1000)
+		x.tagEnd()
+
+		x.element("quck", func() {
+			x.attr("id", 14)
+		})
+
+		x.element("longer", func() {
+			x.newLine()
+			x.attr("id", "tweedle-dee-is-dum")
+		})
+	})
 }
 
 func Main() {
