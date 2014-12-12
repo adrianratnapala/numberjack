@@ -1,14 +1,12 @@
-package main
+package savage
 
 import (
 	"io"
 	"fmt"
-	"net/http"
-	"os"
-	"log"
+	. "github.com/ratnapala/numberjack"
 )
 
-var savage_style =
+var css =
 `
 path {
 	stroke: #000000;
@@ -16,23 +14,6 @@ path {
 }
 `
 
-type Thing interface {
-	AsPath()(*Path, bool)
-}
-
-type vertex struct
-{
-	x,y float64
-}
-
-type Path struct {
-	vertices []vertex
-}
-
-// FIX: why not just use golang type assertions?
-func (p *Path) AsPath()(*Path, bool) {
-	return p, p != nil
-}
 
 type xmlWriter struct {
 	w io.Writer
@@ -155,41 +136,19 @@ func (x* xmlWriter) cdata(hard bool, gen func(w io.Writer)) {
 
 // Write pa to w as the inside of an SVG path string (not including quotes).
 func writePathData(w io.Writer, pa *Path)  {
-	vertices := pa.vertices
+	vertices := pa.Coords2()
 	if len(vertices) < 1 {
 		return
 	}
 
 	pt := vertices[0]
-	fmt.Fprintf(w, "M%g %g", pt.x, pt.y)
+	fmt.Fprintf(w, "M%g %g", pt[0], pt[1])
 
 	for _, pt := range vertices[1:] {
-		fmt.Fprintf(w, " L%g %g", pt.x, pt.y)
+		fmt.Fprintf(w, " L%g %g", pt[0], pt[1])
 	}
 
 	io.WriteString(w, " Z")
-}
-
-func handler(w http.ResponseWriter, r *http.Request) {
-	pfad := r.URL.Path[1:]
-
-	w.Header().Add("Content-Type", "text/html")
-	fmt.Fprintf(w, "<html>\n")
-	fmt.Fprintf(w, `<img src="/savage/%s.svg" alt="WTF"></img>` + "\n", pfad)
-	fmt.Fprintf(w, "</html>\n")
-}
-
-func writeSavage(w io.Writer) {
-	var corner = Path {
-		vertices : []vertex {
-			{10, 10},
-			{10, 90},
-			{90, 10},
-		},
-	}
-
-	x := &xmlWriter{w : w}
-	savageDoc(x, func(){savageThing(x, &corner)})
 }
 
 func savageThing(x *xmlWriter, t Thing){
@@ -213,7 +172,7 @@ func savageDoc(x *xmlWriter, gen func()) {
 		x.element("style", func() {
 			x.attr("type", "text/css")
 			x.cdata(true, func (w io.Writer) {
-				io.WriteString(w, savage_style)
+				io.WriteString(w, css)
 			})
 		})
 
@@ -221,23 +180,22 @@ func savageDoc(x *xmlWriter, gen func()) {
 	})
 }
 
-
-
-func svgHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "image/svg+xml")
-	writeSavage(w)
-}
-
-func main() {
+func ThingDoc(w io.Writer, t Thing) (err error) {
 	defer func() {
-		r := recover()
-		if r != nil {
-			log.Fatal(r)
+		if r := recover(); r != nil {
+			if e, ok := r.(error); ok {
+				err = e
+			} else {
+				err = fmt.Errorf("%v", e)
+			}
 		}
 	}()
-	writeSavage(os.Stdout)
 
-	http.HandleFunc("/", handler)
-	http.HandleFunc("/savage/", svgHandler)
-	http.ListenAndServe(":8080", nil)
+	xx := xmlWriter{w:w}
+	savageDoc(&xx, func() {
+		savageThing(&xx, t)
+	})
+
+	return err
 }
+
