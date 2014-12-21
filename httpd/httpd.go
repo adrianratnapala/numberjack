@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"os"
 	"log"
-	"github.com/ratnapala/numberjack"
-	"github.com/ratnapala/numberjack/savage"
+	"github.com/adrianratnapala/numberjack"
+	"github.com/adrianratnapala/numberjack/savage"
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {

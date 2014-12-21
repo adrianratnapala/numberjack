@@ -3,7 +3,7 @@ package savage
 import (
 	"io"
 	"fmt"
-	. "github.com/ratnapala/numberjack"
+	. "github.com/adrianratnapala/numberjack"
 )
 
 var css =
